@@ -1,46 +1,54 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
 import os
+from sqlalchemy import create_engine, text
 
-# Fichiers utilisés
+# Récupérer la configuration de la base distante depuis les secrets
+db_config = st.secrets["postgres"]
+connection_string = (
+    f"postgresql+psycopg2://{db_config['user']}:{db_config['password']}"
+    f"@{db_config['host']}:{db_config['port']}/{db_config['dbname']}"
+)
+
+# Création de l'engine SQLAlchemy
+engine = create_engine(connection_string)
+
+# Fichier Excel initial
 EXCEL_FILE = "base_de_donnees_pokemon.xlsx"
-DB_FILE = "pokemon.db"
 
-# Fonction d'initialisation de la base SQLite à partir de l'Excel
-def init_db_from_excel():
-    # Connexion à la base SQLite (création si nécessaire)
-    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
-    cursor = conn.cursor()
-    # Création de la table si elle n'existe pas déjà
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS pokemon (
-            Pokemon TEXT PRIMARY KEY,
-            PNG TEXT,
-            Disponibilité TEXT,
-            Nom TEXT,
-            Message TEXT
-        )
-    """)
-    conn.commit()
-    # Si la table est vide, on insère toutes les lignes depuis l'Excel initial
-    cursor.execute("SELECT COUNT(*) FROM pokemon")
-    count = cursor.fetchone()[0]
-    if count == 0:
-        df = pd.read_excel(EXCEL_FILE)
-        df.to_sql("pokemon", conn, if_exists="append", index=False)
-    return conn
+# Fonction d'initialisation de la base PostgreSQL à partir de l'Excel
+def init_db_from_excel(engine):
+    with engine.connect() as conn:
+        # Créer la table si elle n'existe pas (attention aux accents : on met "Disponibilité" entre guillemets)
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS pokemon (
+                "Pokemon" TEXT PRIMARY KEY,
+                "PNG" TEXT,
+                "Disponibilité" TEXT,
+                "Nom" TEXT,
+                "Message" TEXT
+            )
+        """))
+        # Vérifier si la table est vide
+        result = conn.execute(text("SELECT COUNT(*) FROM pokemon"))
+        count = result.fetchone()[0]
+        if count == 0:
+            # Charger l'Excel et insérer les données dans la table
+            df = pd.read_excel(EXCEL_FILE)
+            df.to_sql("pokemon", engine, if_exists="append", index=False)
+        conn.commit()
+    return engine
 
-# Initialisation de la base
-conn = init_db_from_excel()
+# Initialisation de la base distante
+engine = init_db_from_excel(engine)
 
 # Fonction pour obtenir les Pokémon disponibles
-def get_available_pokemon(conn):
-    query = "SELECT * FROM pokemon WHERE Disponibilité = 'Disponible'"
-    df = pd.read_sql_query(query, conn)
+def get_available_pokemon(engine):
+    query = 'SELECT * FROM pokemon WHERE "Disponibilité" = \'Disponible\''
+    df = pd.read_sql_query(query, engine)
     return df
 
-# Configurer Streamlit
+# Configuration de Streamlit
 st.set_page_config(layout="wide", page_title="Pot de départ Mickaël", page_icon="🎉")
 st.title("Pot de Départ de Mickaël")
 
@@ -52,7 +60,7 @@ message = st.text_area("Ton message d'au revoir (max 150 caractères car limité
 
 # Affichage de la grille des Pokémon disponibles
 st.subheader("Choisis un Pokémon :")
-df_dispo = get_available_pokemon(conn)
+df_dispo = get_available_pokemon(engine)
 # Conversion du DataFrame en liste de dictionnaires
 pokemon_list = df_dispo.to_dict(orient="records")
 
@@ -82,13 +90,13 @@ col_center = st.columns([1,1,1])
 with col_center[1]:
     if st.button("Envoyer", key="envoyer", help="Cliquez pour envoyer votre message", use_container_width=True):
         if nom and message and st.session_state["selected_pokemon"]:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE pokemon
-                SET Nom = ?, Message = ?, Disponibilité = 'Indisponible'
-                WHERE Pokemon = ?
-            """, (nom, message, st.session_state["selected_pokemon"]))
-            conn.commit()
+            with engine.connect() as conn:
+                conn.execute(text("""
+                    UPDATE pokemon
+                    SET "Nom" = :nom, "Message" = :message, "Disponibilité" = 'Indisponible'
+                    WHERE "Pokemon" = :pokemon
+                """), {"nom": nom, "message": message, "pokemon": st.session_state["selected_pokemon"]})
+                conn.commit()
             st.success("Ton message a bien été envoyé et enregistré dans la base de données !")
             st.session_state["selected_pokemon"] = None
         else:
