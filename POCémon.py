@@ -15,7 +15,7 @@ def get_engine():
 engine = get_engine()
 
 @st.cache_data(ttl=300)
-def get_available_pokemon(engine):
+def get_available_pokemon():
     query = 'SELECT * FROM pokemon WHERE "Disponibilité" = \'Disponible\''
     df = pd.read_sql_query(query, engine)
     return df
@@ -32,7 +32,7 @@ message = st.text_area("Ton message d'au revoir (max 150 caractères car limité
 
 # Affichage de la grille des Pokémon disponibles
 st.subheader("Choisis un Pokémon :")
-df_dispo = get_available_pokemon(engine)
+df_dispo = get_available_pokemon()
 # Conversion du DataFrame en liste de dictionnaires
 pokemon_list = df_dispo.to_dict(orient="records")
 
