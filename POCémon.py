@@ -3,46 +3,18 @@ import pandas as pd
 import os
 from sqlalchemy import create_engine, text
 
-# Récupérer la configuration de la base distante depuis les secrets
-db_config = st.secrets["postgres"]
-connection_string = (
-    f"postgresql+psycopg2://{db_config['user']}:{db_config['password']}"
-    f"@{db_config['host']}:{db_config['port']}/{db_config['dbname']}"
-)
+@st.cache_resource
+def get_engine():
+    db_config = st.secrets["postgres"]
+    connection_string = (
+        f"postgresql+psycopg2://{db_config['user']}:{db_config['password']}"
+        f"@{db_config['host']}:{db_config['port']}/{db_config['dbname']}"
+    )
+    return create_engine(connection_string)
 
-# Création de l'engine SQLAlchemy
-engine = create_engine(connection_string)
+engine = get_engine()
 
-# Fichier Excel initial
-EXCEL_FILE = "base_de_donnees_pokemon.xlsx"
-
-# Fonction d'initialisation de la base PostgreSQL à partir de l'Excel
-def init_db_from_excel(engine):
-    with engine.connect() as conn:
-        # Créer la table si elle n'existe pas (attention aux accents : on met "Disponibilité" entre guillemets)
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS pokemon (
-                "Pokemon" TEXT PRIMARY KEY,
-                "PNG" TEXT,
-                "Disponibilité" TEXT,
-                "Nom" TEXT,
-                "Message" TEXT
-            )
-        """))
-        # Vérifier si la table est vide
-        result = conn.execute(text("SELECT COUNT(*) FROM pokemon"))
-        count = result.fetchone()[0]
-        if count == 0:
-            # Charger l'Excel et insérer les données dans la table
-            df = pd.read_excel(EXCEL_FILE)
-            df.to_sql("pokemon", engine, if_exists="append", index=False)
-        conn.commit()
-    return engine
-
-# Initialisation de la base distante
-engine = init_db_from_excel(engine)
-
-# Fonction pour obtenir les Pokémon disponibles
+@st.cache_data(ttl=300)
 def get_available_pokemon(engine):
     query = 'SELECT * FROM pokemon WHERE "Disponibilité" = \'Disponible\''
     df = pd.read_sql_query(query, engine)
@@ -89,15 +61,17 @@ else:
 col_center = st.columns([1,1,1])
 with col_center[1]:
     if st.button("Envoyer", key="envoyer", help="Cliquez pour envoyer votre message", use_container_width=True):
-        if nom and message and st.session_state["selected_pokemon"]:
+        if prenom and nom and message and st.session_state["selected_pokemon"]:
             with engine.connect() as conn:
                 conn.execute(text("""
                     UPDATE pokemon
-                    SET "Nom" = :nom, "Message" = :message, "Disponibilité" = 'Indisponible'
+                    SET "Prénom" = :prenom, "Nom" = :nom, "Message" = :message, "Disponibilité" = 'Indisponible'
                     WHERE "Pokemon" = :pokemon
-                """), {"nom": nom, "message": message, "pokemon": st.session_state["selected_pokemon"]})
+                """), {"prenom":prenom, "nom": nom, "message": message, "pokemon": st.session_state["selected_pokemon"]})
                 conn.commit()
             st.success("Ton message a bien été envoyé et enregistré dans la base de données !")
             st.session_state["selected_pokemon"] = None
+            get_available_pokemon.clear()
+            st.rerun()
         else:
             st.error("Merci de remplir tous les champs et de sélectionner un Pokémon !")
