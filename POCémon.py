@@ -24,7 +24,7 @@ def get_available_pokemon():
 st.set_page_config(layout="wide", page_title="Pot de départ Mickaël", page_icon="🎉")
 st.title("Pot de Départ de Mickaël")
 
-st.text("Pour son pot de départ, nous allons faire un jeu de carte avec les mots de chacun sur le thème de Pokémon, en effet la communauté Pokémon au sein de OnePoint est plus grande que l'on s'imagine !")
+st.text("Pour son pot de départ, nous allons faire un jeu de carte avec les mots de chacun sur le thème de Pokémon, la communauté Pokémon au sein de Onepoint est plus grande qu'on ne l'imagine !")
 col1, col2 = st.columns(2)
 prenom = col1.text_input("Prénom :", key="prenom")
 nom = col2.text_input("Nom :", key="nom")
