@@ -28,7 +28,7 @@ st.text("Pour son pot de départ, nous allons faire un jeu de carte avec les mot
 col1, col2 = st.columns(2)
 prenom = col1.text_input("Prénom :", key="prenom")
 nom = col2.text_input("Nom :", key="nom")
-message = st.text_area("Ton message d'au revoir (max 150 caractères car limité par la taille de la carte) :", max_chars=150, key="message")
+message = st.text_area("Ton message d'au revoir (max 200 caractères car limité par la taille de la carte) :", max_chars=200, key="message")
 
 # Affichage de la grille des Pokémon disponibles
 st.subheader("Choisis un Pokémon :")
