@@ -4,7 +4,7 @@ import os
 from sqlalchemy import create_engine, text
 
 @st.cache_resource
-def get_engine():
+def get_engine(): 
     db_config = st.secrets["postgres"]
     connection_string = (
         f"postgresql+psycopg2://{db_config['user']}:{db_config['password']}"
@@ -20,7 +20,6 @@ def get_available_pokemon():
     df = pd.read_sql_query(query, engine)
     return df
 
-# Configuration de Streamlit
 st.set_page_config(layout="wide", page_title="Pot de départ Mickaël", page_icon="🎉")
 st.title("Pot de Départ de Mickaël")
 
@@ -28,15 +27,15 @@ st.text("Pour son pot de départ, nous allons faire un jeu de carte avec les mot
 col1, col2 = st.columns(2)
 prenom = col1.text_input("Prénom :", key="prenom")
 nom = col2.text_input("Nom :", key="nom")
-message = st.text_area("Ton message d'au revoir (max 200 caractères car limité par la taille de la carte) :", max_chars=200, key="message")
+message = st.text_area("Ton message d'au revoir (max 250 caractères car limité par la taille de la carte) :", max_chars=250, key="message")
 
-# Affichage de la grille des Pokémon disponibles
+
 st.subheader("Choisis un Pokémon :")
 df_dispo = get_available_pokemon()
-# Conversion du DataFrame en liste de dictionnaires
+
 pokemon_list = df_dispo.to_dict(orient="records")
 
-# Définir le nombre de colonnes par ligne
+
 num_cols = 8
 cols = st.columns(num_cols)
 
@@ -69,7 +68,7 @@ with col_center[1]:
                     WHERE "Pokemon" = :pokemon
                 """), {"prenom":prenom, "nom": nom, "message": message, "pokemon": st.session_state["selected_pokemon"]})
                 conn.commit()
-            st.success("Ton message a bien été envoyé et enregistré dans la base de données !")
+            st.success("Ton message a bien été envoyé et enregistré !")
             st.session_state["selected_pokemon"] = None
             get_available_pokemon.clear()
             st.rerun()
