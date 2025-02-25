@@ -3,6 +3,9 @@ import pandas as pd
 import os
 from sqlalchemy import create_engine, text
 
+st.set_page_config(layout="wide", page_title="Pot de départ Mickaël", page_icon="🎉")
+st.title("Pot de Départ de Mickaël")
+
 @st.cache_resource
 def get_engine(): 
     db_config = st.secrets["postgres"]
@@ -20,8 +23,6 @@ def get_available_pokemon():
     df = pd.read_sql_query(query, engine)
     return df
 
-st.set_page_config(layout="wide", page_title="Pot de départ Mickaël", page_icon="🎉")
-st.title("Pot de Départ de Mickaël")
 
 st.text("Pour son pot de départ, nous allons faire un jeu de carte avec les mots de chacun sur le thème de Pokémon, la communauté Pokémon au sein de Onepoint est plus grande qu'on ne l'imagine !")
 col1, col2 = st.columns(2)
