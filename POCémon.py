@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 from sqlalchemy import create_engine, text
-
+import time
 st.set_page_config(layout="wide", page_title="Pot de départ Mickaël", page_icon="🎉")
 st.title("Pot de Départ de Mickaël")
 
@@ -23,13 +23,30 @@ def get_available_pokemon():
     df = pd.read_sql_query(query, engine)
     return df
 
+@st.dialog("Confirmation", width="small")
+def show_confirmation_dialog():
+    st.write("🥳​ Ton pokémon et ton message ont bien été enregistrés ! ✅​")
+    if st.button("Fermer"):
+        st.session_state["selected_pokemon"] = None
+        get_available_pokemon.clear()
+        st.rerun()
 
-st.text("Pour son pot de départ, nous allons faire un jeu de carte avec les mots de chacun sur le thème de Pokémon, la communauté Pokémon au sein de Onepoint est plus grande qu'on ne l'imagine !")
-col1, col2 = st.columns(2)
-prenom = col1.text_input("Prénom :", key="prenom")
-nom = col2.text_input("Nom :", key="nom")
-message = st.text_area("Ton message d'au revoir (max 250 caractères car limité par la taille de la carte) :", max_chars=250, key="message")
+colonne1, colonne2 = st.columns([3, 1])
+with colonne1:
 
+    st.text("Pour son pot de départ, nous allons faire un jeu de carte avec les mots de chacun sur le thème de Pokémon, la communauté Pokémon au sein de Onepoint est plus grande qu'on ne l'imagine !")
+    st.info("⚠️ Pour info : premier arrivé, premier servi. Si un Pokémon a déjà été choisi, il n'apparaît plus dans les propositions.")
+
+    col1, col2 = st.columns(2)
+    prenom = col1.text_input("Prénom :", key="prenom")
+    nom = col2.text_input("Nom :", key="nom")
+    message = st.text_area("Ton message d'au revoir (max 250 caractères car limité par la taille de la carte) :", max_chars=250, key="message")
+
+with colonne2:
+    st.markdown("**Exemple de carte :**")
+    example_images = "carte1.png"
+    image_path = os.path.join("cartes", example_images)
+    st.image(image_path, width=250)
 
 st.subheader("Choisis un Pokémon :")
 df_dispo = get_available_pokemon()
@@ -69,9 +86,6 @@ with col_center[1]:
                     WHERE "Pokemon" = :pokemon
                 """), {"prenom":prenom, "nom": nom, "message": message, "pokemon": st.session_state["selected_pokemon"]})
                 conn.commit()
-            st.success("Ton message a bien été envoyé et enregistré !")
-            st.session_state["selected_pokemon"] = None
-            get_available_pokemon.clear()
-            st.rerun()
+            show_confirmation_dialog()
         else:
             st.error("Merci de remplir tous les champs et de sélectionner un Pokémon !")
